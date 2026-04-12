@@ -209,3 +209,34 @@ recommendation_system/data/raw/amazon_reviews.csv
 recommendation_system/data/raw/amazon_reviews.csv
 recommendation_system/data/raw/amazon_clean.csv
 recommendation_system/data/processed/amazon_clean.csv
+
+# ============================================
+# ECOMMERCE DATA - KHÔNG COMMIT LÊN GIT
+# ============================================
+
+# Tất cả file CSV trong data/raw và data/processed
+recommendation_system/data/raw/*.csv
+recommendation_system/data/processed/*.csv
+recommendation_system/data/raw/*.zip
+recommendation_system/data/processed/*.zip
+
+# Toàn bộ thư mục raw và processed (cách an toàn nhất)
+recommendation_system/data/raw/
+
+# File nén data
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# File model
+*.pkl
+*.joblib
+*.h5
+*.pth
+*.pt
+*.onnx
+
+# Log files
+*.log
+logs/
