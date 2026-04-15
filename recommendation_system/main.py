@@ -1,5 +1,8 @@
+import random
+
 from utils.data_loader import DataLoader
 from utils.preprocess import Preprocessor
+from models.content_model import ContentBasedRecommender
 
 
 def main():
@@ -42,6 +45,25 @@ def main():
     # print("  - ecommerce_train.csv: Tập train")
     # print("  - ecommerce_test.csv: Tập test")
 
+    # 6. RUN CONTENT-BASED MODEL
+    print("\nSTEP 6: RUN CONTENT-BASED MODEL")
+
+    recommender = ContentBasedRecommender()
+
+    recommender.train_model(df=train, text_column='combined_text', title_column='product_id')
+
+    test_item = random.choice(train['product_id'].unique())
+
+    print(f"\n Gợi ý 5 món đồ có nội dung giống với ID: '{test_item}'")
+
+    print("=" * 60)
+
+    result = recommender.get_recommendation(product_name=test_item, top_n=5)
+
+    if isinstance(result, str):
+        print(result)
+    else:
+        print(result[['product_id', 'product_name', 'combined_text']].to_string(index=False))
 
 if __name__ == "__main__":
     main()
