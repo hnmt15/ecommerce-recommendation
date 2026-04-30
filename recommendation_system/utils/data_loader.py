@@ -87,6 +87,157 @@ class DataLoader:
 
         return merged
 
+    # utils/data_loader.py (thêm các hàm sau)
+
+    def build_user_history(self, data, user_id=None, include_events=True, include_reviews=True):
+        """
+        Xây dựng lịch sử tương tác của user từ reviews và events
+
+        Args:
+            data: Dictionary chứa các DataFrame (từ load_all_data)
+            user_id: ID của user cần lấy (None = lấy tất cả users)
+            include_events: Có bao gồm events không
+            include_reviews: Có bao gồm reviews không
+
+        Returns:
+            DataFrame với lịch sử tương tác
+        """
+        interactions = []
+
+        # ========== 1. TỪ REVIEWS (explicit feedback) ==========
+        if include_reviews and data['reviews'] is not None:
+            reviews = data['reviews'].copy()
+
+            # Lọc theo user_id nếu có
+            if user_id:
+                reviews = reviews[reviews['user_id'] == user_id]
+
+            # Thêm thông tin sản phẩm
+            if data['products'] is not None:
+                products = data['products'][['product_id', 'product_name', 'category', 'brand']]
+                reviews = reviews.merge(products, on='product_id', how='left')
+
+            for _, row in reviews.iterrows():
+                interactions.append({
+                    'user_id': row['user_id'],
+                    'product_id': row['product_id'],
+                    'product_name': row.get('product_name', 'Unknown'),
+                    'category': row.get('category', ''),
+                    'brand': row.get('brand', ''),
+                    'rating': row.get('rating', 0),  # rating thật 1-5
+                    'weight': row.get('rating', 1),  # trọng số = rating
+                    'source': 'review',
+                    'timestamp': row.get('timestamp', None)
+                })
+
+        # ========== 2. TỪ EVENTS (implicit feedback) ==========
+        if include_events and data['events'] is not None:
+            events = data['events'].copy()
+
+            # Lọc theo user_id nếu có
+            if user_id:
+                events = events[events['user_id'] == user_id]
+
+            # Thêm thông tin sản phẩm
+            if data['products'] is not None:
+                products = data['products'][['product_id', 'product_name', 'category', 'brand']]
+                events = events.merge(products, on='product_id', how='left')
+
+            # Định nghĩa trọng số cho từng loại event
+            event_weights = {
+                'view': 1,  # Xem: quan tâm nhẹ
+                'cart': 3,  # Thêm giỏ: quan tâm nhiều
+                'wishlist': 4,  # Yêu thích: quan tâm rất nhiều
+                'purchase': 5  # Mua: quan tâm cao nhất
+            }
+
+            for _, row in events.iterrows():
+                event_type = row['event_type']
+                weight = event_weights.get(event_type, 1)
+
+                interactions.append({
+                    'user_id': row['user_id'],
+                    'product_id': row['product_id'],
+                    'product_name': row.get('product_name', 'Unknown'),
+                    'category': row.get('category', ''),
+                    'brand': row.get('brand', ''),
+                    'rating': None,  # Không có rating thật
+                    'weight': weight,  # Trọng số theo hành vi
+                    'source': event_type,
+                    'timestamp': row.get('timestamp', None)
+                })
+
+        if not interactions:
+            print(f"️ Không có tương tác cho user {user_id if user_id else 'tất cả'}")
+            return pd.DataFrame()
+
+        # ========== 3. TỔNG HỢP VÀ XỬ LÝ TRÙNG LẶP ==========
+        interactions_df = pd.DataFrame(interactions)
+
+        # Nếu cùng user-product có nhiều tương tác, lấy weight cao nhất
+        interactions_df = interactions_df.groupby(['user_id', 'product_id']).agg({
+            'product_name': 'first',
+            'category': 'first',
+            'brand': 'first',
+            'rating': 'max',  # Lấy rating cao nhất
+            'weight': 'max',  # Lấy trọng số cao nhất
+            'source': lambda x: '|'.join(sorted(set(x))),  # Gộp các nguồn
+            'timestamp': 'max'
+        }).reset_index()
+
+        # Sắp xếp theo weight giảm dần (tương tác quan trọng nhất lên đầu)
+        interactions_df = interactions_df.sort_values('weight', ascending=False)
+
+        return interactions_df
+
+    def get_user_history(self, data, user_id, min_weight=1):
+        """
+        Lấy lịch sử tương tác của một user cụ thể
+
+        Args:
+            data: Dictionary chứa các DataFrame
+            user_id: ID của user cần lấy
+            min_weight: Chỉ lấy tương tác có weight >= ngưỡng này
+
+        Returns:
+            DataFrame: Lịch sử tương tác của user
+        """
+        # Xây dựng interactions cho user
+        interactions_df = self.build_user_history(data, user_id=user_id)
+
+        if interactions_df.empty:
+            return interactions_df
+
+        # Lọc theo trọng số
+        interactions_df = interactions_df[interactions_df['weight'] >= min_weight]
+
+        print(f"\n📊 Lịch sử user {user_id}:")
+        print(f"   Tổng số tương tác: {len(interactions_df)}")
+        print(f"   Phân bố nguồn:")
+        source_counts = interactions_df['source'].value_counts()
+        for source, count in source_counts.items():
+            print(f"      - {source}: {count}")
+        print(f"   Weight trung bình: {interactions_df['weight'].mean():.2f}")
+
+        return interactions_df
+
+    def get_top_users(self, data, n=10, aggregate=True):
+        """
+        Lấy top N users có nhiều tương tác nhất
+        """
+        interactions_df = self.build_user_history(data, user_id=None)
+
+        if interactions_df.empty:
+            return []
+
+        top_users = interactions_df['user_id'].value_counts().head(n)
+
+        print(f"\n🏆 Top {n} users có nhiều tương tác nhất:")
+        for idx, (user_id, count) in enumerate(top_users.items(), 1):
+            print(f"   {idx}. User {user_id}: {count} tương tác")
+
+        return top_users.index.tolist()
+
     def load_and_preview(self, sample_size=None):
         # Đọc tất cả file
         data = self.load_all_data()
@@ -148,11 +299,3 @@ class DataLoader:
         print(f"\n Độ thưa của ma trận User-Item: {sparsity:.2f}%")
 
 
-
-# Test nhanh
-if __name__ == "__main__":
-    loader = DataLoader()
-    df = loader.load_and_preview(sample_size=10000)
-
-    if df is not None:
-        loader.get_statistics(df)
