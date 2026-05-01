@@ -125,23 +125,21 @@ class Preprocessor:
         print(f"\n   Gộp {len(df)} interactions → {len(product_df)} sản phẩm (cho content-based)")
         return product_df
 
-
     def split_for_collaborative(self, df, test_size=0.2, random_state=42):
-        unique_users = df['user_idx'].unique()
-        train_users, test_users = train_test_split(
-            unique_users, test_size=test_size, random_state=random_state
-        )
+        # Sắp xếp theo User và thời gian (nếu có)
+        df = df.sample(frac=1, random_state=42)
 
-        train = df[df['user_idx'].isin(train_users)]
-        test = df[df['user_idx'].isin(test_users)]
+        # Lấy dòng đầu tiên của mỗi User để làm tập Test (Đảm bảo mỗi User có ít nhất 1 mẫu ở Test)
+        test = df.groupby('user_idx').head(1)
 
-        print(f"\n   Collaborative split:")
-        print(f"   Train users: {len(train_users):,}")
-        print(f"   Test users: {len(test_users):,}")
+        # Phần còn lại đưa vào Train
+        train = df.drop(test.index)
+
         print(f"   Train interactions: {len(train):,}")
         print(f"   Test interactions: {len(test):,}")
-
         return train, test
+
+
 
 
     def save_processed(self, clean_df, product_df,

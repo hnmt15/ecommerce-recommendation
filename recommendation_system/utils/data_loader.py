@@ -87,8 +87,6 @@ class DataLoader:
 
         return merged
 
-    # utils/data_loader.py (thêm các hàm sau)
-
     def build_user_history(self, data, user_id=None, include_events=True, include_reviews=True):
         """
         Xây dựng lịch sử tương tác của user từ reviews và events
