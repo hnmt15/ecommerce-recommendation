@@ -1,108 +1,118 @@
 import random
 import pandas as pd
 from utils.data_loader import DataLoader
-from utils.preprocess import Preprocessor
+from utils.preprocess import  Preprocessor
 from utils.evaluator import Evaluator
 from models.content_model import ContentBasedRecommender
+from models.collab_filtering_model import CollabRecommender
+import torch
+import pickle
 
 
 def main():
-    print("STARTING HANDLE ECOMMERCE DATA")
-
-    # 1. Load data
+    # 1. Load & Preprocess (Giữ nguyên phần đầu của bạn)
     loader = DataLoader()
     data = loader.load_all_data()
     df = loader.merge_reviews_with_products(data)
 
-    if df is None:
-        print("Can't load data!")
-        return
+    if df is None: return
 
-    # 2. Preprocess (nhận về 2 DataFrame)
     preprocessor = Preprocessor()
-    clean_df, product_df = preprocessor.preprocess(
-        df,
-        min_user_ratings=3,
-        min_item_ratings=2
-    )
-    if product_df is None or clean_df is None:
-        print("Preprocessing failed")
-
-    preprocessor.save_processed(clean_df, product_df)
-
-
-    # 4. Dùng clean_df cho collaborative
+    clean_df, product_df = preprocessor.preprocess(df, min_user_ratings=3, min_item_ratings=2)
     train_interactions, test_interactions = preprocessor.split_for_collaborative(clean_df)
+    preprocessor.save_train_test(train_interactions, test_interactions)
 
-    print(f"\nDONE!")
-    print(f"   Content-based: {len(product_df)} train, {len(product_df)} test products")
-    print(f"   Collaborative: {len(train_interactions)} train, {len(test_interactions)} test interactions")
-
-    # 6. RUN CONTENT-BASED MODEL
-    print("\n1. RUN CONTENT-BASED MODEL")
+    # 2. Train Content-Based
     recommender = ContentBasedRecommender()
-    recommender.train_model(df=product_df, text_column='combined_text', title_column='product_name')
+    recommender.train_model(df=product_df)
     recommender.save_model('models/content_model.pkl')
 
-
-    # random_product = random.choice(train_products['product_name'].unique())
-    # recommender.recommend_and_display(random_product, top_n=5)
-
-    #sample_products = product_df['product_name'].sample(n=min(5, len(product_df))).tolist()
-    top_users = loader.get_top_users(data, n=10, aggregate=True)
-
-    user_history_df = pd.DataFrame()  # Khởi tạo empty
-    real_user_id = None
-
-    if top_users:
-        for user_id in top_users:
-            user_history = loader.get_user_history(data, user_id=user_id, min_weight=2)
-
-            # Lọc sản phẩm hợp lệ bằng cách kiểm tra sự tồn tại trong index model
-            # Dùng isin để lọc nhanh hơn vòng lặp list
-            mask = user_history['product_name'].isin(recommender.indices.index)
-            valid_user_history = user_history[mask]
-
-            if len(valid_user_history) >= 2:
-                user_history_df = valid_user_history
-                real_user_id = user_id
-                break
-
-    if not user_history_df.empty:
-        print(f"\n Tìm thấy user: {real_user_id}")
-        print(f"   Số sản phẩm hợp lệ trong kho: {len(user_history_df)}")
-
-        # Gợi ý bằng hàm đã tối ưu hóa (Giả sử bạn đã update ContentBasedRecommender)
-        recommendations = recommender.recommend_for_user(user_history_df, top_n=10, weight_col='weight')
-
-        if not recommendations.empty:
-            recommender.display_recommendations_with_reasons(recommendations, top_n=10)
-    else:
-        print("⚠️ Không tìm thấy user đủ điều kiện (có ít nhất 2 sản phẩm trong kho model).")
-
-    # 5. Evaluate Model
+    # 3. Khởi tạo Evaluator
+    evaluator = Evaluator()
     print("\n" + "=" * 60)
-    print("📊 ĐÁNH GIÁ CONTENT-BASED MODEL")
+    print(" BÁO CÁO ĐÁNH GIÁ HỆ THỐNG")
     print("=" * 60)
 
-    evaluator = Evaluator()
-    metrics_to_eval = ['category', 'brand', 'both']
+    # --- PHẦN 1: Đánh giá khả năng hiểu sản phẩm (Item-Item) ---
+    # Chỉ đánh giá theo Category để kiểm tra độ chính xác của TF-IDF
+    cb_item_results = evaluator.evaluate_content_based(
+        recommender=recommender,
+        product_df=product_df,
+        sample_size=200,
+        k=10,
+    )
 
-    for metric in metrics_to_eval:
-        results = evaluator.evaluate_content_based(
-            recommender=recommender,
-            product_df=product_df,
-            sample_size=200,
-            k=10,
-            ground_truth_col=metric
-        )
+    print(f"\n[1] Khả năng gợi ý sản phẩm tương đương (Item-Item Similarity):")
+    print(f"    - Precision@10: {cb_item_results['precision@10']:.4f}")
+    print(f"    - Recall@10:    {cb_item_results['recall@10']:.4f}")
+    print(f"    - NDCG@10:      {cb_item_results['ndcg@10']:.4f}")
+    print(f"    - Coverage:     {cb_item_results['coverage']:.2%}")
 
-        print(f"\n📈 Đánh giá theo {metric.upper()}:")
-        print(f"   Precision@10: {results[f'precision@10']:.4f}")
-        print(f"   Recall@10:    {results[f'recall@10']:.4f}")
-        print(f"   NDCG@10:      {results[f'ndcg@10']:.4f}")
-        if metric == 'category':
-            print(f"   Coverage:     {results['coverage']:.2%}")
+    # --- PHẦN 2: Đánh giá khả năng hiểu người dùng (User-centric) ---
+    # TEST VỚI 100 USERS TRONG MẪU TEST
+
+    # top_user_ids = loader.get_top_users(data, n=100)  # Lấy mẫu 100 user tích cực
+    #
+    # user_results = evaluator.evaluate_multiple_users(
+    #     recommender=recommender,
+    #     data_loader=loader,
+    #     data=data,
+    #     user_ids=top_user_ids,
+    #     product_df=product_df,
+    #     k=10
+    # )
+    #
+    # print(f"\n[2] Khả năng dự đoán hành vi người dùng (User-centric Evaluation):")
+    # print(f"    - Số lượng User thử nghiệm: {user_results['Total Users Evaluated']}")
+    # print(f"    - Avg Precision@10: {user_results['Avg Precision@10']:.2%}")
+    # print(f"    - Avg Recall@10:    {user_results['Avg Recall@10']:.2%}")
+    #
+    # print("-" * 60)
+
+
+
+    # 4.GỢI Ý CONTENT_BASED CHO MỘT USER CỤ THỂ
+    # user_history = loader.get_user_history(data, user_id="U003023")
+    # if user_history is not None and not user_history.empty:
+    #     # 2. Lọc bỏ các sản phẩm không có trong kho của Content-Model
+    #     mask = user_history['product_name'].isin(recommender.indices.index)
+    #     valid_history = user_history[mask]
+    #
+    #     if not valid_history.empty:
+    #         # 3. Gọi hàm gợi ý đã tối ưu
+    #         recommendations = recommender.recommend_for_user(
+    #             valid_history,
+    #             top_n=10,
+    #             weight_col='weight'
+    #         )
+    #
+    #         if not recommendations.empty:
+    #             print(f" Tìm thấy {len(valid_history)} sản phẩm hợp lệ trong lịch sử.")
+    #             recommender.display_recommendations_with_reasons(recommendations, top_n=10)
+    #         else:
+    #             print(" Không thể tạo gợi ý (có thể do dữ liệu quá thưa).")
+    #     else:
+    #         print("⚠ Sản phẩm trong lịch sử User này không tồn tại trong kho huấn luyện.")
+    # else:
+    #     print(f"!")
+
+
+    # 5. GỢI Ý VÀ CHO COLLAB
+    # recommender = CollabRecommender()
+    # recommender.get_detailed_recommendations("U003669", clean_df, 5)
+    #
+    # evaluator = Evaluator()
+    # results = evaluator.evaluate_collaborative(
+    #     model= recommender,
+    #     test_df=test_interactions,
+    #     top_n=10
+    # )
+    #
+    # print(f"\n KẾT QUẢ TỔNG HỢP:")
+    # print(f"   RMSE: {results['rmse']:.4f}")
+    # print(f"   Hit Rate@10: {results['hit_rate']:.2f}%")
+    # print(f"   Precision@10: {results['precision']:.4f}")
+    # print(f"   Recall@10: {results['recall']:.4f}")
 
 if __name__ == "__main__":
     main()

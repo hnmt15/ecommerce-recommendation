@@ -94,7 +94,14 @@ class ContentBasedRecommender:
             return pd.DataFrame()
 
         # Lấy danh sách indices và weights
-        user_indices = [self.indices[name] for name in valid_history['product_name']]
+        user_indices = []
+        for name in valid_history['product_name']:
+            idx = self.indices[name]
+            # Nếu idx là một Series (do trùng tên sản phẩm), lấy giá trị đầu tiên
+            if isinstance(idx, pd.Series):
+                user_indices.append(idx.iloc[0])
+            else:
+                user_indices.append(idx)
         weights = valid_history[weight_col].values
 
         # 2. Truy xuất trực tiếp các hàng từ ma trận Similarity
@@ -102,7 +109,7 @@ class ContentBasedRecommender:
         sim_matrix_rows = self.cosine_sim[user_indices]
 
         # 3. Tính toán Vector tổng hợp bằng phép nhân ma trận (Matrix Multiplication)
-        # Nhân trọng số và cộng dồn tất cả chỉ trong 1 dòng code
+        # Nhân trọng số và cộng dồn tất cả
         # weighted_sum shape: (tổng số sản phẩm trong kho,)
         weighted_sum = np.dot(weights, sim_matrix_rows)
 
@@ -114,25 +121,29 @@ class ContentBasedRecommender:
         interacted_indices = set(user_indices)
         recommended_indices = []
         final_scores = []
+        reasons = []
 
         for idx in sorted_indices:
             if idx not in interacted_indices:
                 recommended_indices.append(idx)
                 final_scores.append(weighted_sum[idx])
 
+                match_in_history_idx = np.argmax(sim_matrix_rows[:, idx])
+                reasons.append(valid_history.iloc[match_in_history_idx]['product_name'])
             if len(recommended_indices) >= top_n:
                 break
 
         # 6. Tạo DataFrame kết quả
         result = self.df.iloc[recommended_indices].copy()
         result['score'] = final_scores
+        result['based_on'] = reasons
 
         # Chuẩn hóa similarity_score 0-1
         if final_scores:
             max_s = max(final_scores)
             result['similarity_score'] = [s / max_s for s in final_scores]
 
-        return result[['product_id', 'product_name', 'category', 'similarity_score']]
+        return result[['product_id', 'product_name', 'category', 'similarity_score', 'based_on']]
 
     def recommend_and_display(self, product_name, top_n=5):
         result = self.get_recommendation(product_name, top_n)

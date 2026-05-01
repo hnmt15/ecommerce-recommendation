@@ -7,129 +7,50 @@ class Evaluator:
     def __init__(self):
         pass
 
-    # ========== ĐÁNH GIÁ CONTENT-BASED (Item-Item Similarity) ==========
-
-    def precision_at_k(self, recommended, actual, k=10):
+    def precision_recall_ndcg(self, recommended, actual, k=10):
+        """Tính toán bộ 3 chỉ số cơ bản trong một lần gọi"""
         if not recommended or not actual:
-            return 0.0
-        recommended_k = recommended[:k]
-        hits = len(set(recommended_k) & set(actual))
-        return hits / k
+            return 0.0, 0.0, 0.0
 
-    def recall_at_k(self, recommended, actual, k=10):
-        if not recommended or not actual:
-            return 0.0
-        recommended_k = recommended[:k]
-        hits = len(set(recommended_k) & set(actual))
-        return hits / len(actual)
+        rec_k = recommended[:k]
+        actual_set = set(actual)
+        hits = len(set(rec_k) & actual_set)
 
-    def ndcg_at_k(self, recommended, actual, k=10):
-        if not recommended or not actual:
-            return 0.0
+        precision = hits / k
+        recall = hits / len(actual)
 
-        rel_map = {item: 1 for item in actual}
-        dcg = 0.0
-        for i, item in enumerate(recommended[:k]):
-            rel = rel_map.get(item, 0)
-            dcg += rel / np.log2(i + 2)
+        # Tính NDCG
+        dcg = sum([1 / np.log2(i + 2) for i, item in enumerate(rec_k) if item in actual_set])
+        idcg = sum([1 / np.log2(i + 2) for i in range(min(len(actual), k))])
+        ndcg = dcg / idcg if idcg > 0 else 0.0
 
-        ideal = sorted(actual, key=lambda x: 1, reverse=True)[:k]
-        idcg = 0.0
-        for i, item in enumerate(ideal):
-            idcg += 1 / np.log2(i + 2)
+        return precision, recall, ndcg
 
-        return dcg / idcg if idcg > 0 else 0.0
+    def evaluate_content_based(self, recommender, product_df, sample_size=100, k=10):
+        """Đánh giá nhanh gọn theo Category"""
+        sample = product_df.sample(n=min(sample_size, len(product_df)), random_state=42)
+        results = []
 
-    def evaluate_content_based(self, recommender, product_df, sample_size=200, k=10,
-                               ground_truth_col='category'):
-        """
-        Đánh giá content-based model trên toàn bộ product_df
+        for _, row in sample.iterrows():
+            # Ground truth: Các sản phẩm cùng danh mục
+            actual = product_df[(product_df['category'] == row['category']) &
+                                (product_df['product_id'] != row['product_id'])]['product_id'].tolist()
 
-        Args:
-            recommender: ContentBasedRecommender đã train
-            product_df: DataFrame chứa sản phẩm (đã gộp)
-            sample_size: Số lượng sản phẩm lấy mẫu để đánh giá
-            k: Số lượng gợi ý
-            ground_truth_col: Cột dùng làm ground truth ('category', 'brand', hoặc 'both')
+            if not actual: continue
 
-        Returns:
-            dict: precision@k, recall@k, ndcg@k, coverage
-        """
-        # Lấy mẫu sản phẩm để đánh giá (tránh chạy quá lâu)
-        if sample_size and sample_size < len(product_df):
-            sample_products = product_df.sample(n=sample_size, random_state=42)
-        else:
-            sample_products = product_df
+            # Lấy gợi ý từ model
+            rec_result = recommender.get_recommendation(row['product_name'], top_n=k)
+            recommended = rec_result['product_id'].tolist() if not rec_result.empty else []
 
-        recommendations_dict = {}
-        actual_dict = {}
+            results.append(self.precision_recall_ndcg(recommended, actual, k))
 
-        # Thống kê
-        total_products = len(sample_products)
-        no_recommendation_count = 0
-
-        for _, row in sample_products.iterrows():
-            product_id = row['product_id']
-            product_name = row['product_name']
-
-            # Lấy ground truth theo tiêu chí
-            if ground_truth_col == 'category':
-                relevant_products = product_df[
-                    (product_df['category'] == row['category']) &
-                    (product_df['product_id'] != product_id)
-                    ]['product_id'].tolist()
-            elif ground_truth_col == 'brand':
-                relevant_products = product_df[
-                    (product_df['brand'] == row['brand']) &
-                    (product_df['product_id'] != product_id)
-                    ]['product_id'].tolist()
-            else:  # both: category AND brand
-                relevant_products = product_df[
-                    (product_df['category'] == row['category']) &
-                    (product_df['brand'] == row['brand']) &
-                    (product_df['product_id'] != product_id)
-                    ]['product_id'].tolist()
-
-            # Bỏ qua nếu không có ground truth
-            if not relevant_products:
-                continue
-
-            actual_dict[product_id] = relevant_products
-
-            # Lấy recommendations
-            result = recommender.get_recommendation(product_name, top_n=k)
-
-            if result is not None and not result.empty:
-                recommendations_dict[product_id] = result['product_id'].tolist()
-            else:
-                recommendations_dict[product_id] = []
-                no_recommendation_count += 1
-
-        # Tính metrics
-        precisions = []
-        recalls = []
-        ndcgs = []
-
-        for product_id, recs in recommendations_dict.items():
-            actual = actual_dict.get(product_id, [])
-            if not actual:
-                continue
-
-            precisions.append(self.precision_at_k(recs, actual, k))
-            recalls.append(self.recall_at_k(recs, actual, k))
-            ndcgs.append(self.ndcg_at_k(recs, actual, k))
-
-        # Tính coverage (tỷ lệ sản phẩm có recommendations)
-        coverage = (total_products - no_recommendation_count) / total_products if total_products > 0 else 0
-
+        # Tính trung bình
+        avg_metrics = np.mean(results, axis=0)
         return {
-            f'precision@{k}': np.mean(precisions) if precisions else 0.0,
-            f'recall@{k}': np.mean(recalls) if recalls else 0.0,
-            f'ndcg@{k}': np.mean(ndcgs) if ndcgs else 0.0,
-            'coverage': coverage,
-            'num_samples': len(precisions),
-            'total_products': total_products,
-            'no_recommendation': no_recommendation_count
+            'precision@10': avg_metrics[0],
+            'recall@10': avg_metrics[1],
+            'ndcg@10': avg_metrics[2],
+            'coverage': len(results) / sample_size
         }
 
     def evaluate_content_based_for_user(self, recommender, user_history_df,
@@ -190,12 +111,123 @@ class Evaluator:
             'actual': actual_product
         }
 
-    # ========== ĐÁNH GIÁ COLLABORATIVE (Dự đoán rating) ==========
+    def evaluate_multiple_users(self, recommender, data_loader, data, user_ids, product_df, k=10):
+        """
+        Đánh giá Content-Based trên danh sách User để lấy chỉ số trung bình.
+        """
+        all_results = []
+
+        for user_id in user_ids:
+            # Lấy lịch sử thực tế của User
+            user_history = data_loader.get_user_history(data, user_id=user_id)
+
+            # Chỉ đánh giá những User có đủ lịch sử (>= 2 món)
+            if len(user_history) >= 2:
+                res = self.evaluate_content_based_for_user(
+                    recommender, user_history, product_df, k=k
+                )
+                if 'message' not in res:
+                    all_results.append([res[f'precision@{k}'], res[f'recall@{k}']])
+
+        if not all_results:
+            return {"Precision": 0, "Recall": 0}
+
+        # Tính trung bình cộng của tất cả User đã đánh giá
+        avg_metrics = np.mean(all_results, axis=0)
+        return {
+            f"Avg Precision@{k}": avg_metrics[0],
+            f"Avg Recall@{k}": avg_metrics[1],
+            "Total Users Evaluated": len(all_results)
+        }
+
+
+
+
+
+
 
     def rmse(self, true_ratings, predicted_ratings):
-        """Root Mean Square Error"""
+        """Dự đoán rating có chính xác không?"""
         return mean_squared_error(true_ratings, predicted_ratings, squared=False)
 
     def mae(self, true_ratings, predicted_ratings):
-        """Mean Absolute Error"""
+        """Sai số tuyệt đối trung bình"""
         return np.mean(np.abs(np.array(true_ratings) - np.array(predicted_ratings)))
+
+    def evaluate_collaborative(self, model, test_df, top_n=10):
+        """
+        Đánh giá TOÀN DIỆN collaborative model
+        - RMSE/MAE: Dự đoán rating có chính xác không?
+        - Hit Rate/Precision/Recall: Gợi ý có đúng không?
+        """
+
+
+        # ========== 1. ĐÁNH GIÁ DỰ ĐOÁN RATING (RMSE/MAE) ==========
+        predictions = []
+        true_ratings = []
+
+        for _, row in test_df.iterrows():
+            user_id = row['user_id']
+            item_id = row['product_id']
+            true_rating = row['rating']
+
+            pred_rating = model.predict(user_id, item_id)
+
+            predictions.append(pred_rating)
+            true_ratings.append(true_rating)
+
+        rmse = np.sqrt(mean_squared_error(true_ratings, predictions))
+        mae = np.mean(np.abs(np.array(true_ratings) - np.array(predictions)))
+
+        # ========== 2. ĐÁNH GIÁ GỢI Ý (Hit Rate, Precision, Recall) ==========
+        test_users = test_df['user_id'].unique()
+
+        if hasattr(model, 'user_map'):
+            test_users = [u for u in test_users if u in model.user_map]
+
+        hits = 0
+        precisions = []
+        recalls = []
+
+        for user_id in test_users:
+            # Sản phẩm thực tế user đã mua
+            actual_items = set(test_df[test_df['user_id'] == user_id]['product_id'].values)
+
+            if not actual_items:
+                continue
+
+            # Gợi ý từ model
+            predicted_items = model.recommend(user_id, top_n=top_n)
+
+            # Hit Rate: có ít nhất 1 đúng không?
+            if any(item in actual_items for item in predicted_items):
+                hits += 1
+
+            # Precision/Recall
+            hits_count = len(set(predicted_items) & actual_items)
+            precisions.append(hits_count / top_n)
+            recalls.append(hits_count / len(actual_items))
+
+        hit_rate = (hits / len(test_users)) * 100 if test_users else 0
+
+        print("\n" + "=" * 60)
+        print(" COLLABORATIVE FILTERING EVALUATION")
+        print("=" * 60)
+        print(f"\n DỰ ĐOÁN RATING:")
+        print(f"   RMSE: {rmse:.4f} (càng nhỏ càng tốt, 0 là hoàn hảo)")
+        print(f"   MAE: {mae:.4f} (sai số trung bình ~{mae:.2f} sao)")
+
+        print(f"\n GỢI Ý SẢN PHẨM (top-{top_n}):")
+        print(f"   Hit Rate: {hit_rate:.2f}% ({hits}/{len(test_users)} users)")
+        print(f"   Precision@{top_n}: {np.mean(precisions):.4f}")
+        print(f"   Recall@{top_n}: {np.mean(recalls):.4f}")
+
+        return {
+            'rmse': rmse,
+            'mae': mae,
+            'hit_rate': hit_rate,
+            'precision': np.mean(precisions) if precisions else 0,
+            'recall': np.mean(recalls) if recalls else 0,
+            'total_users': len(test_users),
+            'hits': hits
+        }
