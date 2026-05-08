@@ -7,6 +7,7 @@ from models.content_model import ContentBasedRecommender
 from models.collab_filtering_model import CollabRecommender
 import torch
 import pickle
+from models.hybrid_model import HybridRecommender
 
 
 def main():
@@ -113,6 +114,46 @@ def main():
     # print(f"   Hit Rate@10: {results['hit_rate']:.2f}%")
     # print(f"   Precision@10: {results['precision']:.4f}")
     # print(f"   Recall@10: {results['recall']:.4f}")
+
+    # 5. HYBRID + ĐÁNH GIÁ SO SÁNH
+    cf_recommender = CollabRecommender()
+
+    cf_results = evaluator.evaluate_collaborative(
+        model=cf_recommender,
+        test_df=test_interactions,
+        top_n=10
+    )
+    # Khởi tạo HybridRecommender
+    hybrid = HybridRecommender(
+        content_recommender=recommender,
+        collab_recommender=cf_recommender,
+        cb_weight=0.4,
+        cf_weight=0.6,
+        cold_start_threshold=3
+    )
+    # Đánh giá Hybrid trên 100 user mẫu từ tập test
+    sample_users = test_interactions['user_id'].unique()[:100].tolist()
+
+    hybrid_results = evaluator.evaluate_hybrid(
+        hybrid_recommender=hybrid,
+        data_loader=loader,
+        data=data,
+        product_df=product_df,
+        test_df=test_interactions,
+        user_ids=sample_users,
+        k=10
+    )
+    # In bảng so sánh 3 model ra console
+    evaluator.print_comparison_table(cb_item_results, cf_results, hybrid_results, k=10)
+
+    # Vẽ biểu đồ so sánh và lưu vào models/evaluation_comparison.png
+    evaluator.plot_comparison(
+        cb_results=cb_item_results,
+        cf_results=cf_results,
+        hybrid_results=hybrid_results,
+        k=10,
+        save_path='models/evaluation_comparison.png'
+    )
 
 if __name__ == "__main__":
     main()
