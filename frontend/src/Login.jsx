@@ -66,19 +66,16 @@ export default function Login({ onLogin, onGuest }) {
     setLoading(true);
     setLoginError("");
     try {
-      // Kiểm tra user có tồn tại không TRƯỚC khi cho vào
       const res = await fetch(`${API}/recommend?user_id=${userId.trim()}&top_n=1`);
       const data = await res.json();
       if (!res.ok) {
-        // Không tìm thấy → báo lỗi ngay tại trang login, không cho vào
         setLoginError(data.error || "Không tìm thấy User ID này!");
         triggerShake();
       } else {
-        // Hợp lệ → cho vào trang gợi ý
         onLogin(userId.trim());
       }
     } catch {
-      setLoginError("Không kết nối được server. Kiểm tra Flask chạy chưa?");
+      setLoginError("Không kết nối được server.");
     } finally {
       setLoading(false);
     }
@@ -108,7 +105,6 @@ export default function Login({ onLogin, onGuest }) {
           padding:"48px 40px 40px",
           boxShadow:"0 0 60px rgba(0,100,255,0.08), 0 40px 80px rgba(0,0,0,0.5)",
         }}>
-          {/* Logo */}
           <div style={{ textAlign:"center", marginBottom:"32px" }}>
             <div style={{
               width:"60px", height:"60px",
@@ -127,7 +123,6 @@ export default function Login({ onLogin, onGuest }) {
             </p>
           </div>
 
-          {/* Input */}
           <div style={{ marginBottom:"12px", animation: shake ? "shake 0.4s ease" : "none" }}>
             <label style={{
               display:"block", fontSize:"12px", fontWeight:"600",
@@ -154,17 +149,15 @@ export default function Login({ onLogin, onGuest }) {
             />
           </div>
 
-          {/* Lỗi */}
           {loginError && (
             <div style={{
               marginBottom:"12px", padding:"10px 14px",
               background:"rgba(255,80,80,0.08)",
               border:"1px solid rgba(255,80,80,0.25)",
               borderRadius:"8px", fontSize:"13px", color:"#ff6b6b",
-            }}>❌ {loginError}</div>
+            }}>{loginError}</div>
           )}
 
-          {/* Btn đăng nhập */}
           <button onClick={handleLogin} disabled={loading} style={{
             width:"100%", padding:"14px",
             background: loading ? "rgba(0,150,255,0.3)" : "linear-gradient(135deg, #0090ff, #7b2fff)",
@@ -174,10 +167,9 @@ export default function Login({ onLogin, onGuest }) {
             boxShadow:"0 4px 24px rgba(0,100,255,0.25)",
             marginBottom:"12px", fontFamily:"inherit", transition:"opacity 0.2s",
           }}>
-            {loading ? "⏳ Đang kiểm tra..." : "✨ Đăng nhập"}
+            {loading ? "Đang kiểm tra..." : "Đăng nhập"}
           </button>
 
-          {/* Divider */}
           <div style={{
             display:"flex", alignItems:"center", gap:"12px",
             margin:"16px 0", color:"rgba(120,140,180,0.4)", fontSize:"12px",
@@ -187,7 +179,6 @@ export default function Login({ onLogin, onGuest }) {
             <div style={{ flex:1, height:"1px", background:"rgba(100,130,200,0.15)" }} />
           </div>
 
-          {/* Btn khách */}
           <button onClick={onGuest} style={{
             width:"100%", padding:"13px", background:"transparent",
             border:"1px solid rgba(100,130,200,0.25)", borderRadius:"12px",
@@ -197,15 +188,8 @@ export default function Login({ onLogin, onGuest }) {
             onMouseEnter={e => e.target.style.background = "rgba(100,130,200,0.08)"}
             onMouseLeave={e => e.target.style.background = "transparent"}
           >
-            👤 Tiếp tục với tư cách khách
+            Tiếp tục với tư cách khách
           </button>
-
-          <p style={{
-            textAlign:"center", margin:"20px 0 0",
-            fontSize:"12px", color:"rgba(100,120,160,0.6)",
-          }}>
-            Khách sẽ thấy top sản phẩm được mua nhiều nhất
-          </p>
         </div>
       </div>
 

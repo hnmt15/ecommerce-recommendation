@@ -1,153 +1,277 @@
 import { useState, useEffect } from "react";
 import Login from "./Login";
+import { S } from "./styles";
 
 const API = "http://localhost:5000/api";
 
-// ── ICONS ──────────────────────────────────────────────────────────
 const IconSearch = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
   </svg>
 );
 
-// ── STYLES chung ───────────────────────────────────────────────────
-const S = {
-  app: {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #0a0f1e 0%, #0d1b2a 50%, #0a1628 100%)",
-    color: "#e0e6f0",
-    fontFamily: "'Sora', 'Segoe UI', sans-serif",
-  },
-  header: {
-    background: "rgba(0,200,150,0.04)",
-    borderBottom: "1px solid rgba(0,200,150,0.12)",
-    padding: "16px 40px",
-    display: "flex", alignItems: "center",
-    justifyContent: "space-between",
-    backdropFilter: "blur(10px)",
-    position: "sticky", top: 0, zIndex: 10,
-  },
-  headerLeft: { display: "flex", alignItems: "center", gap: "12px" },
-  headerTitle: {
-    fontSize: "18px", fontWeight: "700", margin: 0,
-    background: "linear-gradient(90deg, #00c896, #00a8ff)",
-    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-  },
-  userBadge: {
-    display: "flex", alignItems: "center", gap: "8px",
-    background: "rgba(0,200,150,0.08)",
-    border: "1px solid rgba(0,200,150,0.2)",
-    borderRadius: "20px", padding: "6px 14px",
-    fontSize: "13px", color: "#00c896",
-  },
-  logoutBtn: {
-    background: "transparent",
-    border: "1px solid rgba(255,100,100,0.25)",
-    borderRadius: "8px", padding: "6px 14px",
-    color: "rgba(255,120,120,0.7)", fontSize: "13px",
-    cursor: "pointer", fontFamily: "inherit",
-    transition: "all 0.2s",
-  },
-  main: { maxWidth: "1100px", margin: "0 auto", padding: "36px 24px" },
-  card: {
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(0,200,150,0.15)",
-    borderRadius: "16px", padding: "28px 32px",
-    marginBottom: "28px",
-  },
-  label: {
-    fontSize: "12px", color: "#00c896", fontWeight: "700",
-    letterSpacing: "0.8px", textTransform: "uppercase",
-    marginBottom: "14px", display: "block",
-  },
-  input: {
-    flex: 1, minWidth: "200px",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(0,200,150,0.3)",
-    borderRadius: "10px", padding: "12px 16px",
-    color: "#e0e6f0", fontSize: "15px", outline: "none",
-    fontFamily: "inherit",
-  },
-  select: {
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(0,200,150,0.3)",
-    borderRadius: "10px", padding: "12px 16px",
-    color: "#e0e6f0", fontSize: "14px", outline: "none", cursor: "pointer",
-  },
-  btnPrimary: {
-    background: "linear-gradient(135deg, #00c896, #00a8ff)",
-    border: "none", borderRadius: "10px", padding: "12px 24px",
-    color: "#fff", fontWeight: "600", fontSize: "14px",
-    cursor: "pointer", display: "flex", alignItems: "center", gap: "8px",
-    fontFamily: "inherit", whiteSpace: "nowrap",
-  },
-  statsRow: {
-    display: "grid", gridTemplateColumns: "repeat(3,1fr)",
-    gap: "16px", marginBottom: "24px",
-  },
-  statCard: {
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(0,200,150,0.12)",
-    borderRadius: "14px", padding: "20px 24px",
-  },
-  statLbl: {
-    fontSize: "11px", color: "#6b8aad", fontWeight: "700",
-    letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: "6px",
-  },
-  statVal: { fontSize: "20px", fontWeight: "700", color: "#e0e6f0" },
-  tableCard: {
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(0,200,150,0.12)",
-    borderRadius: "16px", overflow: "hidden",
-  },
-  tableHead: {
-    padding: "18px 24px",
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-    fontSize: "15px", fontWeight: "700",
-  },
-  th: {
-    padding: "12px 20px", textAlign: "left",
-    fontSize: "11px", fontWeight: "700", color: "#6b8aad",
-    letterSpacing: "0.7px", textTransform: "uppercase",
-    background: "rgba(0,0,0,0.2)",
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-  },
-  td: {
-    padding: "14px 20px", fontSize: "14px",
-    borderBottom: "1px solid rgba(255,255,255,0.04)",
-    verticalAlign: "middle",
-  },
-  rank: {
-    width: "32px", height: "32px", borderRadius: "8px",
-    background: "rgba(0,200,150,0.1)",
-    border: "1px solid rgba(0,200,150,0.2)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: "13px", fontWeight: "700", color: "#00c896",
-  },
-  catBadge: {
-    display: "inline-block", padding: "3px 10px",
-    borderRadius: "6px", fontSize: "12px",
-    background: "rgba(0,168,255,0.1)", color: "#00a8ff",
-    border: "1px solid rgba(0,168,255,0.2)",
-  },
-  errorBox: {
-    background: "rgba(255,80,80,0.08)",
-    border: "1px solid rgba(255,80,80,0.25)",
-    borderRadius: "12px", padding: "16px 20px",
-    color: "#ff6b6b", fontSize: "14px", marginBottom: "20px",
-  },
-  modeBadge: (mode) => ({
-    display: "inline-block", padding: "4px 12px",
-    borderRadius: "20px", fontSize: "13px", fontWeight: "600",
-    background: mode === "Hybrid" ? "rgba(0,200,150,0.15)" : "rgba(0,168,255,0.15)",
-    color: mode === "Hybrid" ? "#00c896" : "#00a8ff",
-    border: `1px solid ${mode === "Hybrid" ? "rgba(0,200,150,0.3)" : "rgba(0,168,255,0.3)"}`,
-  }),
+const ReasonBadge = ({ reason }) => {
+  const cfg = {
+    cb: { label: "Tương đồng nội dung", bg: "rgba(255,180,0,0.1)", color: "#ffb800", border: "rgba(255,180,0,0.25)" },
+    cf: { label: "Người tương tự thích", bg: "rgba(180,0,255,0.1)", color: "#c060ff", border: "rgba(180,0,255,0.25)" },
+  };
+  const c = cfg[reason] || cfg.cb;
+  return (
+    <span style={{
+      display: "inline-block", padding: "3px 10px", borderRadius: "6px",
+      fontSize: "11px", fontWeight: "600",
+      background: c.bg, color: c.color, border: `1px solid ${c.border}`,
+    }}>{c.label}</span>
+  );
 };
 
-// ══════════════════════════════════════════════════════════════════════
-// TRANG KHÁCH — Top sản phẩm phổ biến
-// ══════════════════════════════════════════════════════════════════════
+const MODEL_TABS = [
+  { key: "hybrid",  label: "Hybrid",       desc: "CB × 0.4 + CF × 0.6" },
+  { key: "content", label: "Content-Based", desc: "Dựa trên nội dung sản phẩm" },
+  { key: "collab",  label: "Collaborative", desc: "Dựa trên hành vi người dùng" },
+];
+
+const MODE_INFO = {
+  "Hybrid": {
+    icon: "🔀",
+    formula: "CB × 0.4 + CF × 0.6",
+    desc: "Kết hợp Content-Based và Collaborative Filtering để tối ưu độ chính xác",
+  },
+  "Cold Start": {
+    icon: "❄️",
+    formula: "Content-Based Only",
+    desc: "Người dùng mới, chưa đủ dữ liệu — dùng nội dung sản phẩm để gợi ý",
+  },
+  "Content-Based": {
+    icon: "📄",
+    formula: "Cosine Similarity (TF-IDF)",
+    desc: "Gợi ý dựa trên đặc trưng nội dung: danh mục, mô tả, thuộc tính sản phẩm",
+  },
+  "Collaborative": {
+    icon: "👥",
+    formula: "Neural Collaborative Filtering",
+    desc: "Gợi ý dựa trên hành vi mua/xem của những người dùng có sở thích tương tự",
+  },
+};
+
+const ModelTabs = ({ active, onChange }) => (
+  <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
+    {MODEL_TABS.map(t => (
+      <button key={t.key} onClick={() => onChange(t.key)} style={{
+        padding: "10px 18px", borderRadius: "10px", fontFamily: "inherit",
+        fontSize: "13px", fontWeight: "600", cursor: "pointer", transition: "all 0.2s",
+        background: active === t.key ? "linear-gradient(135deg,#00c896,#00a8ff)" : "rgba(255,255,255,0.04)",
+        color: active === t.key ? "#fff" : "#8aa8c8",
+        border: active === t.key ? "none" : "1px solid rgba(255,255,255,0.08)",
+      }}>
+        {t.label}
+        <span style={{ display: "block", fontSize: "10px", fontWeight: "400", opacity: 0.75, marginTop: "2px" }}>
+          {t.desc}
+        </span>
+      </button>
+    ))}
+  </div>
+);
+
+const MetricsPanel = () => {
+  const [metrics, setMetrics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open || metrics) return;
+    setLoading(true);
+    fetch(`${API}/metrics`)
+      .then(r => r.json())
+      .then(d => { setMetrics(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [open]);
+
+  const lowerIsBetter = new Set(['rmse', 'mae']);
+  const best = {};
+  if (metrics) {
+    const models = ['content_based', 'collaborative', 'hybrid'];
+    const allKeys = new Set([
+      ...Object.keys(metrics.content_based || {}),
+      ...Object.keys(metrics.collaborative || {}),
+      ...Object.keys(metrics.hybrid || {}),
+    ]);
+    allKeys.forEach(k => {
+      const vals = models.map(m => metrics[m]?.[k]).filter(v => v !== undefined);
+      best[k] = lowerIsBetter.has(k) ? Math.min(...vals) : Math.max(...vals);
+    });
+  }
+
+  const modelCfg = [
+    { key: 'content_based',  label: 'Content-Based', color: '#ffb800' },
+    { key: 'collaborative',  label: 'Collaborative',  color: '#c060ff' },
+    { key: 'hybrid',         label: 'Hybrid',         color: '#00c896' },
+  ];
+};
+
+const ModeCard = ({ mode, metrics }) => {
+  const [showMetrics, setShowMetrics] = useState(false);
+  const info = MODE_INFO[mode] || MODE_INFO["Hybrid"];
+
+  const modelKey =
+    mode === "Hybrid" ? "hybrid"
+    : mode === "Content-Based" || mode === "Cold Start" ? "content_based"
+    : "collaborative";
+
+  const modeMetrics = metrics?.[modelKey];
+
+  const toggleBtnStyle = {
+    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "6px", padding: "3px 8px", color: "#8aa8c8",
+    fontSize: "11px", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+  };
+
+  return (
+    <div style={S.statCard}>
+      <div style={S.statLbl}>Mode</div>
+
+      {/* Badge tên mode */}
+      <div style={{ marginTop: "4px", marginBottom: "8px" }}>
+        <span style={S.modeBadge(mode)}>
+          {info.icon} {mode}
+        </span>
+      </div>
+
+      <div style={{
+        fontSize: "11px", color: "#00c896", fontWeight: "600",
+        fontFamily: "monospace", marginBottom: "4px",
+      }}>
+        {info.formula}
+      </div>
+
+      <div style={{ fontSize: "11px", color: "#4a6a8a", marginBottom: "10px", lineHeight: "1.5" }}>
+        {info.desc}
+      </div>
+
+      {modeMetrics && (
+        <>
+          <button
+            onClick={() => setShowMetrics(v => !v)}
+            style={toggleBtnStyle}
+            onMouseEnter={e => e.currentTarget.style.background = "rgba(0,200,150,0.1)"}
+            onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+          >
+            {showMetrics ? "Ẩn chỉ số ▲" : "Xem chỉ số ▼"}
+          </button>
+
+          {showMetrics && (
+            <div style={{
+              display: "flex", flexWrap: "wrap", gap: "6px",
+              borderTop: "1px solid rgba(255,255,255,0.05)",
+              paddingTop: "10px", marginTop: "10px",
+            }}>
+              {Object.entries(modeMetrics).map(([k, v]) => (
+                <div key={k} style={{
+                  background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: "6px", padding: "4px 8px", textAlign: "center",
+                }}>
+                  <div style={{ fontSize: "10px", color: "#6b8aad", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    {k.toUpperCase()}
+                  </div>
+                  <div style={{ fontSize: "13px", fontWeight: "700", color: "#e0e6f0" }}>
+                    {typeof v === "number" ? v.toFixed(4) : v}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+const InteractionCard = ({ nInteractions, sourceCounts, interactions }) => {
+  const [showDetail, setShowDetail] = useState(false);
+
+  const toggleBtnStyle = {
+    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "6px", padding: "3px 8px", color: "#8aa8c8",
+    fontSize: "11px", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+  };
+
+  const eventColor = (type) => {
+    const t = (type || "").toLowerCase();
+    if (t === "purchase" || t === "buy") return { bg: "rgba(0,200,150,0.1)", color: "#00c896", border: "rgba(0,200,150,0.2)" };
+    if (t === "cart")                    return { bg: "rgba(255,180,0,0.1)",  color: "#ffb800", border: "rgba(255,180,0,0.2)" };
+    return                                      { bg: "rgba(0,168,255,0.1)",  color: "#00a8ff", border: "rgba(0,168,255,0.2)" };
+  };
+
+  return (
+    <div style={{ ...S.statCard, display: "flex", flexDirection: "column" }}>
+      <div style={S.statLbl}>Tổng tương tác</div>
+
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "12px" }}>
+        <div style={{ ...S.statVal, fontSize: "36px", lineHeight: 1 }}>{nInteractions}</div>
+        {interactions && interactions.length > 0 && (
+          <button
+            onClick={() => setShowDetail(v => !v)}
+            style={{ ...toggleBtnStyle, marginTop: "8px" }}
+            onMouseEnter={e => e.currentTarget.style.background = "rgba(0,200,150,0.1)"}
+            onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+          >
+            {showDetail ? "Ẩn ▲" : "Chi tiết ▼"}
+          </button>
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+        {Object.entries(sourceCounts || {}).map(([src, cnt]) => (
+          <span key={src} style={{
+            padding: "2px 8px", borderRadius: "20px", fontSize: "11px",
+            background: "rgba(255,255,255,0.05)", color: "#8aa8c8",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}>
+            {src}: {cnt}
+          </span>
+        ))}
+      </div>
+
+      {showDetail && (
+        <div style={{
+          marginTop: "10px",
+          maxHeight: "160px", overflowY: "auto",
+          display: "flex", flexDirection: "column", gap: "4px",
+          borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "8px",
+          scrollbarWidth: "thin", scrollbarColor: "rgba(0,200,150,0.2) transparent",
+        }}>
+          {interactions.map((item, i) => {
+            const ec = eventColor(item.event_type || item.source);
+            return (
+              <div key={i} style={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                padding: "5px 8px", borderRadius: "6px",
+                background: "rgba(255,255,255,0.025)",
+              }}>
+                <span style={{
+                  color: "#c8d8e8", fontSize: "11px", flex: 1,
+                  marginRight: "8px", overflow: "hidden",
+                  textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>
+                  {item.product_name || item.name || `ID: ${item.product_id}`}
+                </span>
+                <span style={{
+                  padding: "1px 7px", borderRadius: "4px",
+                  fontSize: "10px", fontWeight: "600", whiteSpace: "nowrap",
+                  background: ec.bg, color: ec.color,
+                  border: `1px solid ${ec.border}`,
+                }}>
+                  {item.event_type || item.source || "view"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 function GuestPage({ onLoginClick }) {
   const [popular, setPopular] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -162,51 +286,21 @@ function GuestPage({ onLoginClick }) {
 
   return (
     <div style={S.app}>
-      {/* Header */}
       <div style={S.header}>
         <div style={S.headerLeft}>
           <span style={{ fontSize: "22px" }}>🛒</span>
-          <h1 style={S.headerTitle}>Hệ Thống Gợi Ý Sản Phẩm</h1>
+          <h1 style={S.headerTitle}>Ecommerce Recommendation</h1>
         </div>
-        <button onClick={onLoginClick} style={S.btnPrimary}>
-          ✨ Đăng nhập để xem gợi ý cá nhân
-        </button>
+        <button onClick={onLoginClick} style={S.btnPrimary}>Đăng nhập</button>
       </div>
 
       <div style={S.main}>
-        {/* Banner */}
-        <div style={{
-          ...S.card,
-          background: "linear-gradient(135deg, rgba(0,200,150,0.08), rgba(0,168,255,0.06))",
-          border: "1px solid rgba(0,200,150,0.2)",
-          textAlign: "center", padding: "40px",
-        }}>
-          <div style={{ fontSize: "40px", marginBottom: "12px" }}>👋</div>
-          <h2 style={{ fontSize: "20px", fontWeight: "700", marginBottom: "8px" }}>
-            Chào mừng bạn!
-          </h2>
-          <p style={{ color: "#6b8aad", fontSize: "14px", marginBottom: "20px" }}>
-            Đăng nhập để nhận gợi ý sản phẩm <strong style={{ color: "#00c896" }}>cá nhân hóa</strong> theo sở thích của bạn
-          </p>
-          <button onClick={onLoginClick} style={{ ...S.btnPrimary, margin: "0 auto" }}>
-            ✨ Đăng nhập ngay
-          </button>
-        </div>
-
-        {/* Top sản phẩm */}
         <div style={S.tableCard}>
           <div style={{ ...S.tableHead, display: "flex", alignItems: "center", gap: "8px" }}>
-            🔥 Top Sản Phẩm Được Mua Nhiều Nhất
+            Top Sản Phẩm Được Mua Nhiều Nhất
           </div>
-
-          {loading && (
-            <div style={{ textAlign: "center", padding: "40px", color: "#6b8aad" }}>
-              ⏳ Đang tải...
-            </div>
-          )}
-
-          {error && <div style={{ ...S.errorBox, margin: "16px" }}>❌ {error}</div>}
-
+          {loading && <div style={{ textAlign: "center", padding: "40px", color: "#6b8aad" }}>⏳ Đang tải...</div>}
+          {error && <div style={{ ...S.errorBox, margin: "16px" }}>{error}</div>}
           {!loading && !error && (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
@@ -215,29 +309,17 @@ function GuestPage({ onLoginClick }) {
                   <th style={S.th}>Tên sản phẩm</th>
                   <th style={S.th}>Danh mục</th>
                   <th style={S.th}>Lượt mua</th>
-                  <th style={S.th}>Rating TB</th>
+                  <th style={S.th}>Rating</th>
                 </tr>
               </thead>
               <tbody>
                 {popular.map((item, idx) => (
-                  <tr key={idx} style={{
-                    background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
-                  }}>
-                    <td style={S.td}>
-                      <div style={S.rank}>{idx + 1}</div>
-                    </td>
-                    <td style={{ ...S.td, fontWeight: "500", color: "#c8d8e8" }}>
-                      {item.product_name}
-                    </td>
-                    <td style={S.td}>
-                      <span style={S.catBadge}>{item.category}</span>
-                    </td>
-                    <td style={{ ...S.td, color: "#00c896", fontWeight: "600" }}>
-                      {item.buy_count} lượt
-                    </td>
-                    <td style={{ ...S.td, color: "#ffd700" }}>
-                      ⭐ {item.avg_rating}
-                    </td>
+                  <tr key={idx} style={{ background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)" }}>
+                    <td style={S.td}><div style={S.rank}>{idx + 1}</div></td>
+                    <td style={{ ...S.td, fontWeight: "500", color: "#c8d8e8" }}>{item.product_name}</td>
+                    <td style={S.td}><span style={S.catBadge}>{item.category}</span></td>
+                    <td style={{ ...S.td, color: "#00c896", fontWeight: "600" }}>{item.buy_count} lượt</td>
+                    <td style={{ ...S.td, color: "#ffd700" }}>⭐ {item.avg_rating}</td>
                   </tr>
                 ))}
               </tbody>
@@ -250,22 +332,31 @@ function GuestPage({ onLoginClick }) {
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════
-// TRANG USER — Gợi ý cá nhân
-// ══════════════════════════════════════════════════════════════════════
 function UserPage({ userId, onLogout }) {
-  const [topN, setTopN] = useState(10);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState("");
+  const [topN, setTopN]           = useState(10);
+  const [modelType, setModelType] = useState("hybrid");
+  const [loading, setLoading]     = useState(false);
+  const [result, setResult]       = useState(null);
+  const [error, setError]         = useState("");
+  const [metrics, setMetrics]     = useState(null);
 
-  // Tự tìm gợi ý khi vào trang
+  useEffect(() => {
+    fetch(`${API}/metrics`)
+      .then(r => r.json())
+      .then(d => setMetrics(d))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => { fetchRecommend(); }, []);
+
+  useEffect(() => {
+    if (result) fetchRecommend();
+  }, [modelType]);
 
   const fetchRecommend = async () => {
     setLoading(true); setError(""); setResult(null);
     try {
-      const res = await fetch(`${API}/recommend?user_id=${userId}&top_n=${topN}`);
+      const res  = await fetch(`${API}/recommend?user_id=${userId}&top_n=${topN}&model=${modelType}`);
       const data = await res.json();
       if (!res.ok) setError(data.error || "Lỗi không xác định");
       else setResult(data);
@@ -278,38 +369,43 @@ function UserPage({ userId, onLogout }) {
 
   return (
     <div style={S.app}>
-      {/* Header */}
       <div style={S.header}>
         <div style={S.headerLeft}>
           <span style={{ fontSize: "22px" }}>🛒</span>
           <h1 style={S.headerTitle}>Hệ Thống Gợi Ý Sản Phẩm</h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div style={S.userBadge}>👤 {userId}</div>
-          <button
-            onClick={onLogout}
-            style={S.logoutBtn}
+          <div style={S.userBadge}>{userId}</div>
+          <button onClick={onLogout} style={S.logoutBtn}
             onMouseEnter={e => e.target.style.background = "rgba(255,100,100,0.08)"}
             onMouseLeave={e => e.target.style.background = "transparent"}
-          >
-            Đăng xuất
-          </button>
+          >Đăng xuất</button>
         </div>
       </div>
 
       <div style={S.main}>
-        {/* Control */}
+
+        <MetricsPanel />
+
         <div style={S.card}>
-          <span style={S.label}>⚙️ Cài đặt gợi ý</span>
+          <span style={S.label}>Cài đặt gợi ý</span>
+
+          <ModelTabs active={modelType} onChange={m => setModelType(m)} />
+
           <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-            <select
-              style={S.select} value={topN}
-              onChange={e => setTopN(Number(e.target.value))}
-            >
-              {[5, 10, 15, 20].map(n => (
-                <option key={n} value={n}>Top {n} sản phẩm</option>
-              ))}
-            </select>
+            <div style={{ position: "relative" }}>
+              <select
+                style={S.select}
+                value={topN}
+                onChange={e => setTopN(Number(e.target.value))}
+              >
+                {[5, 10, 15, 20].map(n => (
+                  <option key={n} value={n} style={{ background: "#0d1b2a", color: "#e0e6f0" }}>
+                    Top {n} sản phẩm
+                  </option>
+                ))}
+              </select>
+            </div>
             <button style={S.btnPrimary} onClick={fetchRecommend} disabled={loading}>
               <IconSearch />
               {loading ? "Đang tính..." : "Làm mới gợi ý"}
@@ -317,7 +413,7 @@ function UserPage({ userId, onLogout }) {
           </div>
         </div>
 
-        {error && <div style={S.errorBox}>❌ {error}</div>}
+        {error && <div style={S.errorBox}>{error}</div>}
 
         {loading && (
           <div style={{ textAlign: "center", padding: "60px", color: "#6b8aad" }}>
@@ -328,46 +424,26 @@ function UserPage({ userId, onLogout }) {
 
         {result && !loading && (
           <>
-            {/* Stats */}
             <div style={S.statsRow}>
+
               <div style={S.statCard}>
-                <div style={S.statLbl}>👤 User ID</div>
+                <div style={S.statLbl}>User ID</div>
                 <div style={S.statVal}>{result.user_id}</div>
               </div>
-              <div style={S.statCard}>
-                <div style={S.statLbl}>📊 Tổng tương tác</div>
-                <div style={S.statVal}>{result.n_interactions}</div>
-                <div style={{ marginTop: "8px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  {Object.entries(result.source_counts || {}).map(([src, cnt]) => (
-                    <span key={src} style={{
-                      padding: "2px 8px", borderRadius: "20px", fontSize: "11px",
-                      background: "rgba(255,255,255,0.05)", color: "#8aa8c8",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                    }}>
-                      {src}: {cnt}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div style={S.statCard}>
-                <div style={S.statLbl}>⚙️ Mode</div>
-                <div style={{ marginTop: "4px" }}>
-                  <span style={S.modeBadge(result.mode)}>
-                    {result.mode === "Hybrid" ? "🔀" : "❄️"} {result.mode}
-                  </span>
-                  <div style={{ fontSize: "12px", color: "#4a6a8a", marginTop: "8px" }}>
-                    {result.mode === "Hybrid"
-                      ? "CB × 0.4 + CF × 0.6"
-                      : "Content-Based Only"}
-                  </div>
-                </div>
-              </div>
+
+              <InteractionCard
+                nInteractions={result.n_interactions}
+                sourceCounts={result.source_counts}
+                interactions={result.interactions || []}
+              />
+
+              <ModeCard mode={result.mode} metrics={metrics} />
+
             </div>
 
-            {/* Table */}
             <div style={S.tableCard}>
-              <div style={{ ...S.tableHead }}>
-                🎯 Top {result.recommendations.length} Sản Phẩm Gợi Ý Cho Bạn
+              <div style={S.tableHead}>
+                Top {result.recommendations.length} Sản Phẩm Gợi Ý Cho Bạn
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
@@ -375,63 +451,61 @@ function UserPage({ userId, onLogout }) {
                     <th style={S.th}>#</th>
                     <th style={S.th}>Tên sản phẩm</th>
                     <th style={S.th}>Danh mục</th>
+                    <th style={S.th}>Lý do gợi ý</th>
                     <th style={S.th}>Điểm phù hợp</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {result.recommendations.map((item, idx) => (
-                    <tr key={idx} style={{
-                      background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
-                    }}>
-                      <td style={S.td}><div style={S.rank}>{item.rank}</div></td>
-                      <td style={{ ...S.td, fontWeight: "500", color: "#c8d8e8" }}>
-                        {item.product_name}
-                      </td>
-                      <td style={S.td}>
-                        <span style={S.catBadge}>{item.category}</span>
-                      </td>
-                      <td style={S.td}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <span style={{ color: "#00c896", fontWeight: "600", fontSize: "13px", minWidth: "50px" }}>
-                            {item.score}
-                          </span>
-                          <div style={{ flex: 1, height: "6px", background: "rgba(255,255,255,0.06)", borderRadius: "3px" }}>
-                            <div style={{
-                              height: "100%", width: `${item.score * 100}%`,
-                              background: "linear-gradient(90deg, #00c896, #00a8ff)",
-                              borderRadius: "3px",
-                            }} />
+                  {result.recommendations.map((item, idx) => {
+                    const scorePct = item.score > 0
+                      ? parseFloat((item.score * 100).toFixed(2))
+                      : 0;
+
+                    return (
+                      <tr key={idx} style={{ background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)" }}>
+                        <td style={S.td}><div style={S.rank}>{item.rank}</div></td>
+                        <td style={{ ...S.td, fontWeight: "500", color: "#c8d8e8" }}>{item.product_name}</td>
+                        <td style={S.td}><span style={S.catBadge}>{item.category}</span></td>
+                        <td style={S.td}><ReasonBadge reason={item.reason} /></td>
+                        <td style={S.td}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <span style={{ color: "#00c896", fontWeight: "600", fontSize: "13px", minWidth: "56px" }}>
+                              {item.score > 0 ? `${scorePct}%` : "—"}
+                            </span>
+                            {item.score > 0 && (
+                              <div style={{ flex: 1, height: "6px", background: "rgba(255,255,255,0.06)", borderRadius: "3px" }}>
+                                <div style={{
+                                  height: "100%", width: `${Math.min(item.score * 100, 100)}%`,
+                                  background: "linear-gradient(90deg, #00c896, #00a8ff)", borderRadius: "3px",
+                                }} />
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </>
         )}
       </div>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap');`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap');
+        select option { background: #0d1b2a !important; color: #e0e6f0 !important; }
+      `}</style>
     </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════
-// ROOT APP — Quản lý flow đăng nhập
-// ══════════════════════════════════════════════════════════════════════
 export default function App() {
-  // page: "login" | "guest" | "user"
-  const [page, setPage] = useState("login");
+  const [page, setPage]     = useState("login");
   const [userId, setUserId] = useState("");
 
-  const handleLogin = (id) => {
-    setUserId(id);
-    setPage("user");
-  };
-
-  const handleGuest = () => setPage("guest");
-  const handleLogout = () => { setUserId(""); setPage("login"); };
+  const handleLogin  = (id) => { setUserId(id); setPage("user"); };
+  const handleGuest  = ()   => setPage("guest");
+  const handleLogout = ()   => { setUserId(""); setPage("login"); };
 
   if (page === "login") return <Login onLogin={handleLogin} onGuest={handleGuest} />;
   if (page === "guest") return <GuestPage onLoginClick={() => setPage("login")} />;
