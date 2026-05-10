@@ -73,6 +73,15 @@ const ModelTabs = ({ active, onChange }) => (
   </div>
 );
 
+const METRIC_LABELS = {
+  'precision@10': 'Precision@10',
+  'recall@10':    'Recall@10',
+  'ndcg@10':      'NDCG@10',
+  'hit_rate':     'Hit Rate (%)',
+  'rmse':         'RMSE ↓',
+  'mae':          'MAE ↓',
+};
+
 const MetricsPanel = () => {
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -107,6 +116,71 @@ const MetricsPanel = () => {
     { key: 'collaborative',  label: 'Collaborative',  color: '#c060ff' },
     { key: 'hybrid',         label: 'Hybrid',         color: '#00c896' },
   ];
+
+  return (
+    <div style={{ marginBottom: "28px" }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        ...S.btnPrimary,
+        background: open ? "rgba(0,200,150,0.15)" : "rgba(255,255,255,0.05)",
+        color: open ? "#00c896" : "#8aa8c8",
+        border: `1px solid ${open ? "rgba(0,200,150,0.3)" : "rgba(255,255,255,0.08)"}`,
+        marginBottom: open ? "16px" : 0,
+      }}>
+        {open ? "Ẩn" : "Xem"} So Sánh Metrics 3 Model
+      </button>
+
+      {open && (
+        <div style={S.card}>
+          {loading && <div style={{ color: "#6b8aad", textAlign: "center", padding: "20px" }}>⏳ Đang tính metrics...</div>}
+          {!loading && metrics && !metrics.error && (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={S.th}>Chỉ số</th>
+                    {modelCfg.map(m => (
+                      <th key={m.key} style={{ ...S.th, color: m.color }}>{m.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.keys(METRIC_LABELS).map(k => {
+                    const vals = modelCfg.map(m => metrics[m.key]?.[k]);
+                    if (vals.every(v => v === undefined)) return null;
+                    return (
+                      <tr key={k}>
+                        <td style={{ ...S.td, color: "#8aa8c8", fontSize: "13px" }}>{METRIC_LABELS[k]}</td>
+                        {modelCfg.map((m, i) => {
+                          const v = vals[i];
+                          const isBest = v !== undefined && v === best[k];
+                          return (
+                            <td key={m.key} style={{ ...S.td, fontWeight: isBest ? "700" : "400" }}>
+                              {v !== undefined ? (
+                                <span style={{ color: isBest ? m.color : "#c8d8e8" }}>
+                                  {k === 'hit_rate' ? `${(v * 100).toFixed(1)}%` : v.toFixed(4)}
+                                  {isBest && " ✓"}
+                                </span>
+                              ) : <span style={{ color: "#4a6a8a" }}>—</span>}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p style={{ fontSize: "11px", color: "#4a6a8a", marginTop: "12px" }}>
+                ✓ = tốt nhất ở chỉ số đó &nbsp;|&nbsp; RMSE/MAE càng nhỏ càng tốt &nbsp;|&nbsp; Còn lại càng lớn càng tốt
+              </p>
+            </div>
+          )}
+          {!loading && metrics?.error && (
+            <div style={S.errorBox}>Lỗi tính metrics: {metrics.error}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const ModeCard = ({ mode, metrics }) => {
