@@ -9,17 +9,17 @@ The project implements three main recommendation approaches:
 The system uses an e-commerce dataset from Kaggle containing user interactions and product information.
 
 ## Tools and Technologies Used
-Python: primary programming language.
-Pandas: data processing, cleaning, and analysis.
-NumPy: numerical computation and matrix operations.
-Matplotlib & Seaborn: data visualization during EDA.
-Scikit-learn: building recommendation systems, TF-IDF, Cosine Similarity, and machine learning algorithms.
-SciPy: support for sparse matrix processing in Collaborative Filtering.
-PyTorch: Could be used for implementing deep learning models, providing dynamic computational graphs and extensive support for research and development.
+Python: primary programming language.<br>
+Pandas: data processing, cleaning, and analysis.<br>
+NumPy: numerical computation and matrix operations.<br>
+Matplotlib & Seaborn: data visualization during EDA.<br>
+Scikit-learn: building recommendation systems, TF-IDF, Cosine Similarity, and machine learning algorithms.<br>
+SciPy: support for sparse matrix processing in Collaborative Filtering.<br>
+PyTorch: Could be used for implementing deep learning models, providing dynamic computational graphs and extensive support for research and development.<br>
 
 ## Directory Breakdown
-backend/: The main script to run the project, training, and evaluating models.
-frontend/: User-friendly deployment interface.
+backend/: The main script to run the project, training, and evaluating models.<br>
+frontend/: User-friendly deployment interface.<br>
 recommendation_system/:
 - data/: Contains all the data files.
 - models/: Houses the model implementations.
